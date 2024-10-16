@@ -234,7 +234,7 @@ defmodule Delta do
 
       iex> delta = [Op.insert("01🙋45")]
       iex> Delta.slice(delta, 1, 2)
-      ** (RuntimeError) Encoding failed in take_partial {"1🙋45", %{"insert" => "1🙋45"}, 2, {:incomplete, "1", <<216, 61>>}, {:error, "", <<222, 75, 0, 52, 0, 53>>}}
+      [%{"insert" => "1🙋"}]
   """
   @spec slice(t, non_neg_integer, non_neg_integer) :: t
   def slice(delta, index, len) do
@@ -254,23 +254,18 @@ defmodule Delta do
 
       iex> delta = [Op.insert("01🙋45")]
       iex> Delta.slice_max(delta, 1, 2)
-      [%{"insert" => "1"}]
+      [%{"insert" => "1🙋"}]
   """
   @doc since: "0.2.0"
   @spec slice_max(t, non_neg_integer, non_neg_integer) :: t
   def slice_max(delta, index, len) do
-    {_left, right} = split(delta, index, align: true)
-    {middle, _rest} = split(right, len, align: true)
+    {_left, right} = split(delta, index)
+    {middle, _rest} = split(right, len)
     middle
   end
 
   @doc ~S"""
   Splits delta at the given index.
-
-  ## Options
-
-    * `:align` - when `true`, allow moving index left if
-      we're likely to split a grapheme otherwise.
 
   ## Examples
       iex> delta = [Op.insert("Hello World")]
@@ -279,18 +274,18 @@ defmodule Delta do
 
       iex> delta = [Op.insert("01🙋45")]
       iex> Delta.split(delta, 3, align: true)
-      {[%{"insert" => "01"}], [%{"insert" => "🙋45"}]}
+      {[%{"insert" => "01🙋"}], [%{"insert" => "45"}]}
 
       iex> delta = [Op.insert("a"), Op.insert("b", %{"bold" => true})]
       iex> Delta.split(delta, 3)
       {[%{"insert" => "a"}, %{"insert" => "b", "attributes" => %{"bold" => true}}], []}
   """
-  @spec split(t, non_neg_integer | fun, Keyword.t()) :: {t, t}
-  def split(delta, index, opts \\ [])
+  @spec split(t, non_neg_integer | fun) :: {t, t}
+  def split(delta, index)
 
-  def split(delta, 0, _), do: {[], delta}
+  def split(delta, 0), do: {[], delta}
 
-  def split(delta, index, opts) when is_integer(index) do
+  def split(delta, index) when is_integer(index) do
     do_split(
       [],
       delta,
@@ -303,36 +298,35 @@ defmodule Delta do
           {:cont, index - op_size}
         end
       end,
-      index,
-      opts
+      index
     )
   end
 
-  def split(delta, func, opts) when is_function(func) do
-    do_split([], delta, func, nil, opts)
+  def split(delta, func) when is_function(func) do
+    do_split([], delta, func, nil)
   end
 
-  defp do_split(passed, [], _, _, _), do: {Enum.reverse(passed), []}
+  defp do_split(passed, [], _, _), do: {Enum.reverse(passed), []}
 
-  defp do_split(passed, remaining, func, context, opts) when is_function(func, 1) do
-    do_split(passed, remaining, fn op, _ -> func.(op) end, context, opts)
+  defp do_split(passed, remaining, func, context) when is_function(func, 1) do
+    do_split(passed, remaining, fn op, _ -> func.(op) end, context)
   end
 
-  defp do_split(passed, remaining, func, context, opts) when is_function(func, 2) do
+  defp do_split(passed, remaining, func, context) when is_function(func, 2) do
     [first | remaining] = remaining
 
     case func.(first, context) do
       :cont ->
-        do_split([first | passed], remaining, func, context, opts)
+        do_split([first | passed], remaining, func, context)
 
       {:cont, context} ->
-        do_split([first | passed], remaining, func, context, opts)
+        do_split([first | passed], remaining, func, context)
 
       0 ->
         {Enum.reverse(passed), [first | remaining]}
 
       index ->
-        case Op.take(first, index, opts) do
+        case Op.take(first, index) do
           {left, false} ->
             {Enum.reverse([left | passed]), remaining}
 

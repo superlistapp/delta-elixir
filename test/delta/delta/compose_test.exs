@@ -2,6 +2,15 @@ defmodule Tests.Delta.Compose do
   use Delta.Support.Case, async: false
   doctest Delta, only: [compose: 2, compose_all: 1]
 
+  describe ".compose/2 (utf-16/32)" do
+    test "take_partial with two 16-bit code units" do
+      a = [Op.insert("Take the 💊💊")]
+      b = [Op.retain(10)]
+
+      assert [%{"insert" => "Take the 💊💊"}] == Delta.compose(a, b)
+    end
+  end
+
   describe ".compose/2 (basic)" do
     test "insert + insert" do
       a = [Op.insert("A")]

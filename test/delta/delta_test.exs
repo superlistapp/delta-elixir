@@ -56,17 +56,17 @@ defmodule Tests.Delta do
 
     test "slice normal emoji" do
       delta = [%{"insert" => "01🙋45"}]
-      assert Delta.slice(delta, 1, 4) == [%{"insert" => "1🙋4"}]
+      assert Delta.slice(delta, 1, 4) == [%{"insert" => "1🙋45"}]
     end
 
     test "slice emoji with zero width joiner" do
       delta = [%{"insert" => "01🙋‍♂️78"}]
-      assert Delta.slice(delta, 1, 7) == [%{"insert" => "1🙋‍♂️7"}]
+      assert Delta.slice(delta, 1, 7) == [%{"insert" => "1🙋‍♂️78"}]
     end
 
     test "slice emoji with joiner and modifer" do
       delta = [%{"insert" => "01🙋🏽‍♂️90"}]
-      assert Delta.slice(delta, 1, 9) == [%{"insert" => "1🙋🏽‍♂️9"}]
+      assert Delta.slice(delta, 1, 9) == [%{"insert" => "1🙋🏽‍♂️90"}]
     end
 
     test "slice with 0 index" do
@@ -121,17 +121,17 @@ defmodule Tests.Delta do
 
     test "slice normal emoji" do
       delta = [%{"insert" => "01🙋45"}]
-      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🙋4"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🙋45"}]
     end
 
     test "slice emoji with zero width joiner" do
       delta = [%{"insert" => "01🙋‍♂️78"}]
-      assert Delta.slice_max(delta, 1, 7) == [%{"insert" => "1🙋‍♂️7"}]
+      assert Delta.slice_max(delta, 1, 7) == [%{"insert" => "1🙋‍♂️78"}]
     end
 
     test "slice emoji with joiner and modifer" do
       delta = [%{"insert" => "01🙋🏽‍♂️90"}]
-      assert Delta.slice_max(delta, 1, 9) == [%{"insert" => "1🙋🏽‍♂️9"}]
+      assert Delta.slice_max(delta, 1, 9) == [%{"insert" => "1🙋🏽‍♂️90"}]
     end
 
     test "slice with 0 index" do
@@ -147,39 +147,36 @@ defmodule Tests.Delta do
     test "slice emoji: codepoint + variation selector" do
       # "01☹️345"
       delta = [%{"insert" => "01\u2639\uFE0F345"}]
-      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1\u2639\uFE0F"}]
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1☹️"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1☹️3"}]
     end
 
     test "slice emoji: codepoint + skin tone modifier" do
       # "01🤵🏽345"
       delta = [%{"insert" => "01\u{1F935}\u{1F3FD}345"}]
-      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1\u{1F935}\u{1F3FD}"}]
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1🤵🏽"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1🤵🏽3"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🤵🏽34"}]
+      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1🤵🏽345"}]
     end
 
     test "slice emoji: codepoint + ZWJ + codepoint" do
       # "01👨‍🏭345"
       delta = [%{"insert" => "01\u{1F468}\u200D\u{1F3ED}345"}]
-      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1"}]
-      assert Delta.slice_max(delta, 1, 6) == [%{"insert" => "1\u{1F468}\u200D\u{1F3ED}"}]
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1👨‍🏭"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1👨‍🏭3"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1👨‍🏭34"}]
+      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1👨‍🏭345"}]
+      assert Delta.slice_max(delta, 1, 6) == [%{"insert" => "1👨‍🏭345"}]
     end
 
     test "slice emoji: flags" do
       # "01🇦🇺345"
       delta = [%{"insert" => "01\u{1F1E6}\u{1F1FA}345"}]
-      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1"}]
-      # "1🇦"
-      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1\u{1F1E6}"}]
-      # "1🇦"
-      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1\u{1F1E6}"}]
-      # "1🇦🇺"
-      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1\u{1F1E6}\u{1F1FA}"}]
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1🇦🇺"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1🇦🇺3"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🇦🇺34"}]
+      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1🇦🇺345"}]
     end
 
     test "slice emoji: tag sequence" do
@@ -188,25 +185,25 @@ defmodule Tests.Delta do
         %{"insert" => "01\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}345"}
       ]
 
-      for len <- 2..14 do
-        assert Delta.slice_max(delta, 1, len) == [%{"insert" => "1"}]
-      end
-
-      assert Delta.slice_max(delta, 1, 15) == [
-               %{"insert" => "1\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}"}
-             ]
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1🏴󠁧󠁢󠁳󠁣󠁴󠁿"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1🏴󠁧󠁢󠁳󠁣󠁴󠁿3"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🏴󠁧󠁢󠁳󠁣󠁴󠁿34"}]
+      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1🏴󠁧󠁢󠁳󠁣󠁴󠁿345"}]
+      assert Delta.slice_max(delta, 1, 6) == [%{"insert" => "1🏴󠁧󠁢󠁳󠁣󠁴󠁿345"}]
     end
 
     test "slice complex emoji" do
       # "01🚵🏻‍♀️345"
       delta = [%{"insert" => "01\u{1F6B5}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}345"}]
-
-      for len <- 2..7 do
-        assert Delta.slice_max(delta, 1, len) == [%{"insert" => "1"}]
-      end
+      assert Delta.slice_max(delta, 1, 2) == [%{"insert" => "1🚵🏻‍♀️"}]
+      assert Delta.slice_max(delta, 1, 3) == [%{"insert" => "1🚵🏻‍♀️3"}]
+      assert Delta.slice_max(delta, 1, 4) == [%{"insert" => "1🚵🏻‍♀️34"}]
+      assert Delta.slice_max(delta, 1, 5) == [%{"insert" => "1🚵🏻‍♀️345"}]
+      assert Delta.slice_max(delta, 1, 6) == [%{"insert" => "1🚵🏻‍♀️345"}]
+      assert Delta.slice_max(delta, 1, 7) == [%{"insert" => "1🚵🏻‍♀️345"}]
 
       assert Delta.slice_max(delta, 1, 8) == [
-               %{"insert" => "1\u{1F6B5}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}"}
+               %{"insert" => "1\u{1F6B5}\u{1F3FB}\u{200D}\u{2640}\u{FE0F}345"}
              ]
     end
   end

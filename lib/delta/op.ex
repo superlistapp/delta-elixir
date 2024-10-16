@@ -1,6 +1,5 @@
 defmodule Delta.Op do
   alias Delta.Attr
-  alias Delta.Utils
   alias Delta.EmbedHandler
 
   @type t :: insert_op | retain_op | delete_op
@@ -171,14 +170,11 @@ defmodule Delta.Op do
       5
 
       iex> Op.text_size("🏴󠁧󠁢󠁳󠁣󠁴󠁿")
-      14
+      1
   """
   @spec text_size(text :: binary) :: non_neg_integer
   def text_size(text) do
-    text
-    |> :unicode.characters_to_binary(:utf8, :utf16)
-    |> byte_size()
-    |> div(2)
+    String.length(text)
   end
 
   @doc ~S"""
@@ -210,22 +206,20 @@ defmodule Delta.Op do
       iex> Op.insert("Hello") |> Op.take(3)
       {%{"insert" => "Hel"}, %{"insert" => "lo"}}
 
-      iex> assert_raise RuntimeError, fn -> Op.insert("🏴󠁧󠁢󠁳󠁣󠁴󠁿") |> Op.take(1) end
-
-      iex> Op.insert("🏴󠁧󠁢󠁳󠁣󠁴󠁿") |> Op.take(1, align: true)
-      {%{"insert" => ""}, %{"insert" => "🏴󠁧󠁢󠁳󠁣󠁴󠁿"}}
+      iex> Op.insert("🏴󠁧󠁢󠁳󠁣󠁴󠁿") |> Op.take(1)
+      {%{"insert" => "🏴󠁧󠁢󠁳󠁣󠁴󠁿"}, false}
   """
-  @spec take(op :: t, length :: non_neg_integer, opts :: Keyword.t()) :: {t, t | boolean}
-  def take(op, length, opts \\ [])
+  @spec take(op :: t, length :: non_neg_integer) :: {t, t | boolean}
+  def take(op, length)
 
-  def take(op = %{"insert" => embed}, _length, _opts) when not is_bitstring(embed) do
+  def take(op = %{"insert" => embed}, _length) when not is_bitstring(embed) do
     {op, false}
   end
 
-  def take(op, length, opts) do
+  def take(op, length) do
     case size(op) - length do
       0 -> {op, false}
-      _ -> take_partial(op, length, opts)
+      _ -> take_partial(op, length)
     end
   end
 
@@ -350,47 +344,21 @@ defmodule Delta.Op do
     {op1, a, op2, b}
   end
 
-  @spec take_partial(t, non_neg_integer, Keyword.t()) :: {t, t}
-  defp take_partial(op, 0, _opts), do: {insert("", op["attributes"]), op}
+  @spec take_partial(t, non_neg_integer) :: {t, t}
+  defp take_partial(op, 0), do: {insert("", op["attributes"]), op}
 
-  defp take_partial(%{"insert" => text} = op, len, opts) do
-    binary = :unicode.characters_to_binary(text, :utf8, :utf16)
-    binary_length = byte_size(binary)
-
-    left =
-      binary
-      |> Kernel.binary_part(0, len * 2)
-      |> :unicode.characters_to_binary(:utf16, :utf8)
-
-    right =
-      binary
-      |> Kernel.binary_part(len * 2, binary_length - len * 2)
-      |> :unicode.characters_to_binary(:utf16, :utf8)
-
-    case {is_binary(left), is_binary(right), Keyword.get(opts, :align, false)} do
-      {true, true, false} ->
-        {insert(left, op["attributes"]), insert(right, op["attributes"])}
-
-      {true, true, true} ->
-        if Utils.slices_likely_cut_emoji?(left, right) do
-          take_partial(op, len - 1, opts)
-        else
-          {insert(left, op["attributes"]), insert(right, op["attributes"])}
-        end
-
-      {_, _, true} ->
-        take_partial(op, len - 1, opts)
-
-      _ ->
-        raise "Encoding failed in take_partial #{inspect({text, op, len, left, right})}"
-    end
+  defp take_partial(%{"insert" => text} = op, len) do
+    length = String.length(text)
+    left = String.slice(text, 0, len)
+    right = String.slice(text, len, length - len)
+    {insert(left, op["attributes"]), insert(right, op["attributes"])}
   end
 
-  defp take_partial(%{"delete" => full} = op, length, _opts) do
+  defp take_partial(%{"delete" => full} = op, length) do
     {delete(length, op["attributes"]), delete(full - length, op["attributes"])}
   end
 
-  defp take_partial(%{"retain" => full} = op, length, _opts) do
+  defp take_partial(%{"retain" => full} = op, length) do
     {retain(length, op["attributes"]), retain(full - length, op["attributes"])}
   end
 
